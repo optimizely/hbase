@@ -108,7 +108,7 @@ public class TestAsyncProcess {
           nbMultiResponse, nbActions);
       return new RpcRetryingCaller<MultiResponse>(100, 10) {
         @Override
-        public MultiResponse callWithoutRetries( RetryingCallable<MultiResponse> callable)
+        public MultiResponse callWithoutRetries(RetryingCallable<MultiResponse> callable, int to)
         throws IOException, RuntimeException {
           try {
             // sleep one second in order for threadpool to start another thread instead of reusing
@@ -120,6 +120,32 @@ public class TestAsyncProcess {
           return mr;
         }
       };
+    }
+  }
+
+  static class CallerWithFailure extends RpcRetryingCaller<MultiResponse>{
+
+    public CallerWithFailure() {
+      super(100, 100);
+    }
+
+    @Override
+    public MultiResponse callWithoutRetries(RetryingCallable<MultiResponse> callable, int to)
+      throws IOException, RuntimeException {
+      throw new IOException("test");
+    }
+  }
+
+  static class AsyncProcessWithFailure<Res> extends MyAsyncProcess<Res> {
+
+    public AsyncProcessWithFailure(HConnection hc, Configuration conf) {
+      super(hc, null, conf, new AtomicInteger());
+      serverTrackerTimeout = 1;
+    }
+
+    @Override
+    protected RpcRetryingCaller<MultiResponse> createCaller(MultiServerCallable<Row> callable) {
+      return new CallerWithFailure();
     }
   }
 

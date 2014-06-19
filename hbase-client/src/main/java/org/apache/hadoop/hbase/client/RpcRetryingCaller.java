@@ -48,7 +48,12 @@ import com.google.protobuf.ServiceException;
     (value = "IS2_INCONSISTENT_SYNC", justification = "na")
 public class RpcRetryingCaller<T> {
   static final Log LOG = LogFactory.getLog(RpcRetryingCaller.class);
-  /**
+
+  static {
+    LOG.info("======== running patched version of hbase ========");
+  }
+
+  /***
    * Timeout for the call including retries
    */
   private int callTimeout;
@@ -60,6 +65,7 @@ public class RpcRetryingCaller<T> {
    * Start and end times for a single call.
    */
   private final static int MIN_RPC_TIMEOUT = 2000;
+  private final static int OPT_MIN_RPC_TIMEOUT = 60000;
 
   private final long pause;
   private final int retries;
@@ -76,7 +82,10 @@ public class RpcRetryingCaller<T> {
       // If there is no time left, we're trying anyway. It's too late.
       // 0 means no timeout, and it's not the intent here. So we secure both cases by
       // resetting to the minimum.
-      remaining = MIN_RPC_TIMEOUT;
+
+      LOG.warn("using min rpc timeout. Remaining time: " + remaining + "ms",
+               new RuntimeException("exception to capture the current stack"));
+      remaining = OPT_MIN_RPC_TIMEOUT;
     }
     RpcClient.setRpcTimeout(remaining);
   }
@@ -169,10 +178,11 @@ public class RpcRetryingCaller<T> {
    * @throws IOException if a remote or network exception occurs
    * @throws RuntimeException other unspecified error
    */
-  public T callWithoutRetries(RetryingCallable<T> callable)
+  public T callWithoutRetries(RetryingCallable<T> callable, int callTimeout)
   throws IOException, RuntimeException {
     // The code of this method should be shared with withRetries.
     this.globalStartTime = EnvironmentEdgeManager.currentTimeMillis();
+    this.callTimeout = callTimeout;
     try {
       beforeCall();
       callable.prepare(false);
@@ -190,6 +200,7 @@ public class RpcRetryingCaller<T> {
       afterCall();
     }
   }
+
 
   /**
    * Get the good or the remote exception if any, throws the DoNotRetryIOException.
