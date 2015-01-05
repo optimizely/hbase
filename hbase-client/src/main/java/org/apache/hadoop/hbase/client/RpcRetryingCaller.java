@@ -83,7 +83,7 @@ public class RpcRetryingCaller<T> {
       // 0 means no timeout, and it's not the intent here. So we secure both cases by
       // resetting to the minimum.
 
-      LOG.warn("using min rpc timeout. Remaining time: " + remaining + "ms",
+      LOG.warn(String.format("using min rpc timeout. Remaining time: %dms", remaining),
                new RuntimeException("exception to capture the current stack"));
       remaining = OPT_MIN_RPC_TIMEOUT;
     }
